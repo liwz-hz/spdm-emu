@@ -691,4 +691,5 @@ endif()
 
     add_subdirectory(spdm_emu/spdm_device_attester_sample)
     add_subdirectory(spdm_inproc_demo)
+    add_subdirectory(rmm_style_demo)
     endif()
