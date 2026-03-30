@@ -44,6 +44,52 @@ void rmm_log_message(const char *direction, size_t message_size, const void *mes
     printf("RMM %s: size=%zu\n", direction, message_size);
 }
 
+static void rmm_print_hex_dump(const char *label, const uint8_t *data, size_t size)
+{
+    size_t i;
+    size_t row;
+    size_t rows;
+    size_t bytes_per_row = 16;
+
+    printf("RMM %s (hex dump, %zu bytes):\n", label, size);
+
+    rows = (size + bytes_per_row - 1) / bytes_per_row;
+
+    for (row = 0; row < rows; row++) {
+        size_t row_start = row * bytes_per_row;
+        size_t row_end = row_start + bytes_per_row;
+        if (row_end > size) {
+            row_end = size;
+        }
+
+        printf("  %04zx: ", row_start);
+
+        for (i = row_start; i < row_end; i++) {
+            printf("%02x ", data[i]);
+        }
+
+        for (i = row_end; i < row_start + bytes_per_row; i++) {
+            printf("   ");
+        }
+
+        printf(" |");
+
+        for (i = row_start; i < row_end; i++) {
+            if (data[i] >= 0x20 && data[i] <= 0x7e) {
+                printf("%c", data[i]);
+            } else {
+                printf(".");
+            }
+        }
+
+        for (i = row_end; i < row_start + bytes_per_row; i++) {
+            printf(" ");
+        }
+
+        printf("|\n");
+    }
+}
+
 libspdm_return_t rmm_requester_send_message(void *spdm_context,
                                             size_t message_size,
                                             const void *message,
@@ -71,6 +117,8 @@ libspdm_return_t rmm_requester_send_message(void *spdm_context,
     header = (spdm_message_header_t *)msg_ptr;
     printf("RMM REQ->RSP: Request code=0x%x, version=0x%x, size=%zu\n",
            header->request_response_code, header->spdm_version, message_size);
+
+    rmm_print_hex_dump("REQ->RSP", msg_ptr, message_size);
 
     rmm_trigger_responder_processing();
 
@@ -110,6 +158,8 @@ libspdm_return_t rmm_requester_receive_message(void *spdm_context,
     printf("RMM REQ<-RSP: Response code=0x%x, version=0x%x, size=%zu\n",
            header->request_response_code, header->spdm_version, *message_size);
 
+    rmm_print_hex_dump("REQ<-RSP", msg_ptr, *message_size);
+
     return LIBSPDM_STATUS_SUCCESS;
 }
 
@@ -134,7 +184,7 @@ libspdm_return_t rmm_responder_send_message(void *spdm_context,
     buffer->buffer_size = message_size;
     buffer->has_message = true;
 
-    rmm_log_message("RSP->REQ", message_size, message);
+    rmm_print_hex_dump("RSP->REQ", (const uint8_t *)message, message_size);
 
     return LIBSPDM_STATUS_SUCCESS;
 }
@@ -165,7 +215,7 @@ libspdm_return_t rmm_responder_receive_message(void *spdm_context,
     *message_size = buffer->buffer_size;
     buffer->has_message = false;
 
-    rmm_log_message("RSP<-REQ", *message_size, *message);
+    rmm_print_hex_dump("RSP<-REQ", (const uint8_t *)*message, *message_size);
 
     return LIBSPDM_STATUS_SUCCESS;
 }
